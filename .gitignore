@@ -6,5 +6,7 @@ private/*
 01-docker-terraform/1_docker_sql/terraform/
 01-docker-terraform/1_docker_sql/data_pgadmin
 
+01-docker-terraform/2_terraform_gcp/google-cloud-sdk/*
+
 *.json
 *.json.gz
