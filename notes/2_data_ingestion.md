@@ -76,19 +76,31 @@ A Data Lake (DL) is not to be confused with a Data Warehouse (DW). There are sev
 
 Data Lakes came into existence because as companies started to realize the importance of data, they soon found out that they couldn't ingest data right away into their DWs but they didn't want to waste uncollected data when their devs hadn't yet finished developing the necessary relationships for a DW, so the Data Lake was born to collect any potentially useful data that could later be used in later steps from the very start of any new projects.
 
+How did it start?
+
+- Companies realized the value of data
+- Store and access data quickly
+- Cannot always define structure of data
+- Usefulness of data being realized later in the project lifecycle
+- Increase in data scientists
+- R&D on data products
+- Need for Cheap storage of Big data
+
 ## ETL vs ELT
 
 When ingesting data, DWs use the ***Export, Transform and Load*** (ETL) model whereas DLs use ***Export, Load and Transform*** (ELT).
 
-The main difference between them is the order of steps. In DWs, ETL (Schema on Write) means the data is _transformed_ (preprocessed, etc) before arriving to its final destination, whereas in DLs, ELT (Schema on read) the data is directly stored without any transformations and any schemas are derived when reading the data from the DL.
+The main difference between them is the order of steps:
+- In DWs, ETL (Schema on Write) means the data is _transformed_ (preprocessed, etc) before arriving to its final destination. (You define a well-defined schema, you define the relationships, and then you write the data)
+- In DLs, ELT (Schema on read) the data is directly stored without any transformations and any schemas are derived when reading the data from the DL. (You write the data first and determine the schema on the read)
 
 ## Data Swamp - Data Lakes gone wrong
 
 Data Lakes are only useful if data can be easily processed from it. Techniques such as versioning and metadata are very helpful in helping manage a Data Lake. A Data Lake risks degenerating into a ***Data Swamp*** if no such measures are taken, which can lead to:
 * No versioning of the data
-* Incompatible schemes for the same data
+* Incompatible schemes for the same data (e.g. today you are writing trip data using  Apache Avro and tomorrow in the same path in the same folder you are writing data as Parquet, his will make it very hard for the consumers to consume this data)
 * No metadata associated
-* Joins between different datasets are not possible
+* Joins between different datasets are not possible (because e.g. there is no foreign key available)
 
 ## Data Lake Cloud Providers
 
@@ -111,7 +123,7 @@ The script we created is an example of how **NOT** to create a pipeline, because
 Ideally, each of these steps would be contained as separate entities, like for example 2 separate scripts. For our pipeline, that would look like this:
 
 ```
-(web) → DOWNLOAD → (csv) → INGEST → (Postgres)
+(web) → DOWNLOAD → (csv) → INGEST → (Postgres Database)
 ```
 
 We have now separated our pipeline into a `DOWNLOAD` script and a `INGEST` script.
@@ -137,13 +149,13 @@ UPLOAD TO BIGQUERY
   ↓
 (table in BQ)
 ```
-_Parquet_ is a [columnar storage datafile format](https://parquet.apache.org/) which is more efficient than CSV.
+_Parquet_ is a [columnar storage datafile format](https://parquet.apache.org/) which is more efficient than CSV. (data is stored column by column instead of row by row)
 
-This ***Data Workflow*** has more steps and even branches. This type of workflow is often called a ***Directed Acyclic Graph*** (DAG) because it lacks any loops and the data flow is well defined.
+This ***Data Workflow (Data Pipeline)*** has more steps and even branches. This type of workflow is often called a ***Directed Acyclic Graph*** (DAG) because it lacks any loops and the data flow is well defined.
 
 The steps in capital letters are our ***jobs*** and the objects in between are the jobs' outputs, which behave as ***dependencies*** for other jobs. Each job may have its own set of ***parameters*** and there may also be global parameters which are the same for all of the jobs.
 
-A ***Workflow Orchestration Tool*** allows us to define data workflows and parametrize them; it also provides additional tools such as history and logging.
+A ***Workflow Orchestration Tool*** allows us to define data workflows, parametrize them, and rerun; it also provides additional tools such as history and logging.
 
 The tool we will focus on in this course is **[Apache Airflow](https://airflow.apache.org/)**, but there are many others such as Luigi, Prefect, Argo, etc.
 
@@ -153,18 +165,18 @@ _[Video source](https://www.youtube.com/watch?v=lqDMzReAtrw&list=PL3MmuxUbc_hJed
 
 A typical Airflow installation consists of the following components:
 
-![airflow architecture](https://airflow.apache.org/docs/apache-airflow/stable/_images/arch-diag-basic.png)
+![airflow architecture](https://airflow.apache.org/docs/apache-airflow/2.1.2/_images/arch-diag-basic.png)
 
-* The **scheduler** handles both triggering scheduled workflows as well as submitting _tasks_ to the executor to run. The scheduler is the main "core" of Airflow.
+* The **scheduler** handles both triggering scheduled workflows as well as submitting _tasks_ to the executor to run (monitors all tasks and tags and then triggers the task instances once their dependencies are complete). The scheduler is the main "core" of Airflow.
 * The **executor** handles running tasks. In a default installation, the executor runs everything inside the scheduler but most production-suitable executors push task execution out to _workers_.
 * A **worker** simply executes tasks given by the scheduler.
-* A **webserver** which seves as the GUI.
-* A **DAG directory**; a folder with _DAG files_ which is read by the scheduler and the executor (an by extension by any worker the executor might have)
-* A **metadata database** (Postgres) used by the scheduler, the executor and the web server to store state. The backend of Airflow.
+* A **webserver** which seves as the GUI (Graphical user interface) to inspect trigger and debug the behavior of tags and tasks. It is available on localhost 8080.
+* A **DAG directory**; a folder with _DAG files_ which is read by the scheduler and the executor (and by extension, by any worker the executor might have - If your Airflow instance is configured to use a distributed setup e.g. _CeleryExecutor_ or _KubernetesExecutor_, workers are the entities that execute individual tasks)
+* A **metadata database** (Postgres) used by the scheduler, the executor and the web server to store the state of the environment. The backend of Airflow.
 * Additional components (not shown in the diagram):
   * `redis`: a _message broker_ that forwards messages from the scheduler to workers.
   * `flower`: app for monitoring the environment, available at port `5555` by default.
-  * `airflow-init`: initialization service which we will customize for our needs.
+  * `airflow-init`: initialization service which we will customize for our needs. (initializes the configuration such as backend, user credentials, environment variables etc)
 
 Airflow will create a folder structure when running:
 * `./dags` - `DAG_FOLDER` for DAG files
@@ -173,16 +185,75 @@ Airflow will create a folder structure when running:
 
 Additional definitions:
 * ***DAG***: Directed acyclic graph, specifies the dependencies between a set of tasks with explicit execution order, and has a beginning as well as an end. (Hence, “acyclic”). A _DAG's Structure_ is as follows:
-  * DAG Definition
+  * DAG Definition: refers to the core structure of a workflow. It is written in Python and defines the following:
+    - What tasks are part of the workflow.
+    - When and how often the workflow should run.
+    - Any global configurations for the workflow.
   * Tasks (eg. Operators)
   * Task Dependencies (control flow: `>>` or `<<` )  
 * ***Task***: a defined unit of work. The Tasks themselves describe what to do, be it fetching data, running analysis, triggering other systems, or more. Common Types of tasks are:
-  * ***Operators*** (used in this workshop) are predefined tasks. They're the most common.
+  * ***Operators*** (used in this workshop) are predefined tasks. They're the most common. They define what kind of work the task will do, such as:
+    - Running Python code.
+    - Executing SQL queries.
+    - Transferring data between systems.  
+    
+    Common types of operators:
+    - `PythonOperator`: Executes Python code.
+    - `BashOperator`: Runs Bash commands.
+    - `S3ToGCSOperator`: Moves files from AWS S3 to Google Cloud Storage.
+    - `MySqlToPostgresOperator`: Transfers data between databases.
   * ***Sensors*** are a subclass of operator which wait for external events to happen.
   * ***TaskFlow decorators*** (subclasses of Airflow's BaseOperator) are custom Python functions packaged as tasks.
 * ***DAG Run***: individual execution/run of a DAG. A run may be scheduled or triggered.
-* ***Task Instance***: an individual run of a single task. Task instances also have an indicative state, which could be `running`, `success`, `failed`, `skipped`, `up for retry`, etc.
-    * Ideally, a task should flow from `none`, to `scheduled`, to `queued`, to `running`, and finally to `success`.
+* ***Task Instance***: an individual run of a single task. (For every task in the DAG, when the DAG is run, one task instance is created for that particular execution of the task)
+  * Each task instance has a corresponding state that indicates the outcome or progress of the task during that specific execution. 
+    - This could be `running`, `success`, `failed`, `skipped`, `up for retry`, etc.
+    - Ideally, a task should flow from `none`, to `scheduled`, to `queued`, to `running`, and finally to `success`.
+  * A task instance is tied to:
+    - A specific task (defined in the DAG).
+    - A specific DAG run (corresponding to a specific execution date).
+
+  Example:
+  ```python
+  from airflow import DAG
+  from datetime import datetime
+  from airflow.operators.dummy import DummyOperator
+
+  # DAG definition
+  default_args = {
+      'owner': 'airflow',
+      'retries': 1,
+  }
+
+  dag = DAG(
+      'example_dag',
+      default_args=default_args,
+      description='An example DAG',
+      schedule_interval='@daily',  # Runs daily
+      start_date=datetime(2023, 1, 1),  # Start date
+      catchup=False,  # Don't run missed tasks
+  )
+
+  # Define tasks using operators
+  task1 = BashOperator(
+      task_id='bash_task',
+      bash_command='echo "This is a Bash command!"',
+      dag=dag,
+  )
+
+  # Dummy function for the PythonOperator
+  def my_python_task():
+      print("Running Python task")
+
+  task2 = PythonOperator(
+      task_id='python_task',
+      python_callable=my_python_task,
+      dag=dag,
+  )
+
+  # Set dependencies
+  task1 >> task2 # Task1 runs before Task2
+  ```
 
 ## Setting up Airflow with Docker
 
@@ -191,13 +262,13 @@ _[Video source](https://www.youtube.com/watch?v=lqDMzReAtrw&list=PL3MmuxUbc_hJed
 ### Pre-requisites
 
 1. This tutorial assumes that the [service account credentials JSON file](1_intro.md#gcp-initial-setup) is named `google_credentials.json` and stored in `$HOME/.google/credentials/`. Copy and rename your credentials file to the required path.
-2. `docker-compose` should be at least version v2.x+ and Docker Engine should have at least 5GB of RAM available, ideally 8GB. On Docker Desktop this can be changed in _Preferences_ > _Resources_.
+2. `docker-compose` should be at least version v2.x+ and Docker Engine should have at least 5GB of RAM available, ideally 8GB. On Docker Desktop this can be changed in _Preferences_ > _Resources_ > _ADVANCED_ > _Memory_.
 
 ### Setup (full version)
 
 Please follow these instructions for deploying the "full" Airflow with Docker. Instructions for a "lite" version are provided in the next section but you must follow these steps first.
 
-1. Create a new `airflow` subdirectory in your work directory.
+1. Create a new `airflow` subdirectory in your work directory (the one we're currently in).
 1. Download the official Docker-compose YAML file for the latest Airflow version.
     ```bash
     curl -LfO 'https://airflow.apache.org/docs/apache-airflow/2.2.3/docker-compose.yaml'
@@ -212,12 +283,13 @@ Please follow these instructions for deploying the "full" Airflow with Docker. I
         ```bash
         echo -e "AIRFLOW_UID=$(id -u)" > .env
         ```
-1. The base Airflow Docker image won't work with GCP, so we need to [customize it](https://airflow.apache.org/docs/docker-stack/build.html) to suit our needs. You may download a GCP-ready Airflow Dockerfile [from this link](../2_data_ingestion/airflow/Dockerfile). A few things of note:
+1. The base Airflow Docker image won't work with GCP, so we need to [customize it](https://airflow.apache.org/docs/docker-stack/build.html) to suit our needs. You may download a GCP-ready Airflow Dockerfile [from this link](../02-workflow-orchestration/airflow/Dockerfile). A few things of note:
     * We use the base Apache Airflow image as the base.
+    ![base](images/02_21.png)
     * We install the GCP SDK CLI tool so that Airflow can communicate with our GCP project.
-    * We also need to provide a [`requirements.txt` file](../2_data_ingestion/airflow/requirements.txt) to install Python dependencies. The dependencies are:
-      * `apache-airflow-providers-google` so that Airflow can use the GCP SDK.
-      * `pyarrow` , a library to work with parquet files.
+    * We also need to provide a [`requirements.txt` file](../02-workflow-orchestration/airflow/requirements.txt) to install Python dependencies. The dependencies are:
+      * `apache-airflow-providers-google` (google specific client for airflow) so that Airflow can use the GCP SDK.
+      * `pyarrow` , a library to work with parquet files, convert your data into parquet files.
 1. Alter the `x-airflow-common` service definition inside the `docker-compose.yaml` file as follows:
    * We need to point to our custom Docker image. At the beginning, comment or delete the `image` field and uncomment the `build` line, or arternatively, use the following (make sure you respect YAML indentation):
       ```yaml
@@ -239,8 +311,9 @@ Please follow these instructions for deploying the "full" Airflow with Docker. I
       GCP_PROJECT_ID: '<your_gcp_project_id>'
       GCP_GCS_BUCKET: '<your_bucket_id>'
       ```
-    * Change the `AIRFLOW__CORE__LOAD_EXAMPLES` value to `'false'`. This will prevent Airflow from populating its interface with DAG examples.
-1. You may find a modified `docker-compose.yaml` file [in this link](../2_data_ingestion/airflow/docker-compose.yaml).
+    * Change the `AIRFLOW__CORE__LOAD_EXAMPLES` value to `'false'`. This will prevent Airflow from populating its interface with DAG examples, so it does not load any predefined DAG examples onto your web console, otherwise it would be very confusing to look for your DAG
+
+1. You may find a modified `docker-compose.yaml` file [in this link](../02-workflow-orchestration/airflow/docker-compose.yaml).
 1. Additional notes:
     * The YAML file uses [`CeleryExecutor`](https://airflow.apache.org/docs/apache-airflow/stable/executor/celery.html) as its executor type, which means that tasks will be pushed to workers (external Docker containers) rather than running them locally (as regular processes). You can change this setting by modifying the `AIRFLOW__CORE__EXECUTOR` environment variable under the `x-airflow-common` environment definition.
 
@@ -276,6 +349,9 @@ For convenience, a simplified YAML version is available [in this link](../2_data
     ```bash
     docker-compose up airflow-init
     ```
+    `airflow-init`: the initialization service provided by the official docker setup from airflow. It initializes your airflow backend which is the metadata database,  configures your directories for the DAGs, plugins etc to your airflow docker container, and set credentials (by default it's airflow)
+    
+    ![airflow-init](images/02_22.png)
 3. Run Airflow
     ```bash
     docker-compose up -d

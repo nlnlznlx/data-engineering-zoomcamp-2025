@@ -8,5 +8,9 @@ private/*
 
 01-docker-terraform/2_terraform_gcp/google-cloud-sdk/*
 
+02-workflow-orchestration/airflow/dags/*
+02-workflow-orchestration/airflow/logs/*
+02-workflow-orchestration/airflow/plugins/*
+
 *.json
 *.json.gz
