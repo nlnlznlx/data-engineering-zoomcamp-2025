@@ -63,11 +63,12 @@ x-airflow-common:
     AIRFLOW_CONN_GOOGLE_CLOUD_DEFAULT: 'google-cloud-platform://?extra__google_cloud_platform__key_path=/.google/credentials/google_credentials.json'
     GCP_PROJECT_ID: 'dtc-de-448310'
     GCP_GCS_BUCKET: 'demo_bucket-dtc-de-448310'
-    # PG_HOST: "${PG_HOST}"
-    # PG_USER: "${PG_USER}"
-    # PG_PASSWORD: "${PG_PASSWORD}"
-    # PG_PORT: "${PG_PORT}"
-    # PG_DATABASE: "${PG_DATABASE}"
+    BIGQUERY_DATASET: 'demo_dataset'
+    PG_HOST: "${PG_HOST}" # ${...} syntax means that the value will be substituted from the host's environment variables
+    PG_USER: "${PG_USER}"
+    PG_PASSWORD: "${PG_PASSWORD}"
+    PG_PORT: "${PG_PORT}"
+    PG_DATABASE: "${PG_DATABASE}"
   volumes:
     - ./dags:/opt/airflow/dags
     - ./logs:/opt/airflow/logs

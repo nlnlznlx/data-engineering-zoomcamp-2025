@@ -10,16 +10,24 @@ services:
       - "./ny_taxi_postgres_data:/var/lib/postgresql/data:rw" # rw means rewrite; ./ means current directory
     ports:
       - "5432:5432"
-  
+    networks:
+      - airflow # specify the network where this pgdatabase lives
+
   # second service
-  pgadmin: 
-    image: dpage/pgadmin4
-    environment:
-      - PGADMIN_DEFAULT_EMAIL=admin@admin.com
-      - PGADMIN_DEFAULT_PASSWORD=root
-    volumes:
-      - "./data_pgadmin:/var/lib/pgadmin"
-    ports:
-      - "8080:80"
+  # pgadmin: 
+  #   image: dpage/pgadmin4
+  #   environment:
+  #     - PGADMIN_DEFAULT_EMAIL=admin@admin.com
+  #     - PGADMIN_DEFAULT_PASSWORD=root
+  #   volumes:
+  #     - "./data_pgadmin:/var/lib/pgadmin"
+  #   ports:
+  #     - "8080:80"
     
-    
+
+networks:
+  airflow: # 自己命名
+    external: # this network is external to this docker compose file
+      name: airflow_default
+# ref: https://stackoverflow.com/questions/38088279/communication-between-multiple-docker-compose-projects
+
