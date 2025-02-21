@@ -26,7 +26,7 @@
   - [Airflow and DAG tips and tricks](#airflow-and-dag-tips-and-tricks)
 - [Airflow in action](#airflow-in-action)
   - [Ingesting data to local Postgres with Airflow](#ingesting-data-to-local-postgres-with-airflow)
-  - [Ingesting data to GCP](#ingesting-data-to-gcp)
+  - [Ingesting data to GCP with Airflow](#ingesting-data-to-gcp-with-airflow)
 - [GCP's Transfer Service](#gcps-transfer-service)
   - [Creating a Transfer Service from GCP's web UI](#creating-a-transfer-service-from-gcps-web-ui)
   - [Creating a Transfer Service with Terraform](#creating-a-transfer-service-with-terraform)
@@ -628,7 +628,7 @@ Convert the ingestion script for loading data to Postgres to Airflow DAG:
 1. Prepare an ingestion script. We will use [this `ingest_script.py` file](../02-workflow-orchestration/airflow/dags/ingest_script.py).
     * This script is heavily based on the script from last session, but the code has been wrapped inside a `ingest_callable()` method that will receive parameters from Airflow in order to connect to the database.
     * We originally ran a dockerized version of the script; we could dockerize it again with a special `DockerOperator` task but we will simply run it with `PythonOperator` in our DAG for simplicity.
-1. Prepare a DAG. We will use [this `data_ingestion_local.py` DAG file](../02-workflow-orchestration/airflow/dags/data_ingestion_local.py). The DAG will have the following tasks:
+1. Prepare a DAG. We will use [this `data_ingestion_local.py` DAG file](../02-workflow-orchestration/airflow/dags/data_ingestion_localpg.py). The DAG will have the following tasks:
     1. A download `BashOperator` task that will download the NYC taxi data.
     1. A `PythonOperator` task that will call our ingest script in order to fill our database.
     1. All the necessary info for connecting to the database will be defined as environment variables.
@@ -710,13 +710,15 @@ _[Back to the top](#table-of-contents)_
 
 # GCP's Transfer Service
 
-_[Video source](https://www.youtube.com/watch?v=rFOFTfD1uGk&list=PL3MmuxUbc_hJed7dXYoJw8DoCuVHhGEQb&index=22)_
-
 [Transfer Service](https://cloud.google.com/storage-transfer-service) is a GCP service to transfer data from multiple sources to Google's Cloud Storage. This is useful for Data Lake purposes.
 
 Transfer Service _jobs_ can be created via the GCP UI or with Terraform.
 
 ## Creating a Transfer Service from GCP's web UI
+
+_[Video source](https://www.youtube.com/watch?v=rFOFTfD1uGk&list=PL3MmuxUbc_hJed7dXYoJw8DoCuVHhGEQb&index=22)_
+
+Moving files from AWS to GCP: You will need an AWS account for this.
 
 We will use the _Transfer Service | cloud_ submenu. Creating a job takes 4 steps:
 
@@ -754,6 +756,8 @@ You may now check your Storage dashboard; you should see a new bucket has been c
 Be aware that Transfer Service charges you per transferred gigabyte. For single use jobs, the Transfer Service UI is preferred to DAGs which take time to create and debug, but costs can add quickly if you're relying on this service to download data periodically.
 
 ## Creating a Transfer Service with Terraform
+
+_[Video source](https://www.youtube.com/watch?v=VhmmbqpIzeI&list=PL3MmuxUbc_hJed7dXYoJw8DoCuVHhGEQb)_
 
 We can use a [Transfer Service Terraform resource](https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/storage_transfer_job) as well to recreate what we just did in the web UI in the form of a Terraform config.
 
