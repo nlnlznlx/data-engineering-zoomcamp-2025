@@ -12,5 +12,14 @@ private/*
 02-workflow-orchestration/airflow/logs/*
 02-workflow-orchestration/airflow/plugins/*
 
+03-data-warehouse/airflow/dags/*
+03-data-warehouse/airflow/logs/*
+03-data-warehouse/airflow/plugins/*
+
+7_project/airflow/dags/*
+7_project/airflow/logs/*
+7_project/airflow/plugins/*
+7_project/terraform/
+
 *.json
 *.json.gz
