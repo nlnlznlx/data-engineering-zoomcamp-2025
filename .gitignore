@@ -1,6 +1,8 @@
 *.DS_store
 
+*.parquet
 *.csv
+
 01-docker-terraform/1_docker_sql/ny_taxi_postgres_data/*
 private/*
 01-docker-terraform/1_docker_sql/terraform/
