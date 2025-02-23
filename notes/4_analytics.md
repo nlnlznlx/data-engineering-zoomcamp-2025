@@ -135,6 +135,8 @@ _[Back to the top](#)_
 
 _[Video source](https://www.youtube.com/watch?v=4eCouvVOJUw&list=PL3MmuxUbc_hJed7dXYoJw8DoCuVHhGEQb&index=35)_
 
+Goal: Transforming the data loaded in DWH into Analytical Views developing a [dbt project](../04-analytics-engineering/dbt/README.md).
+
 ## What is dbt?
 
 ***dbt*** stands for ***data build tool***. It's a _transformation_ tool: it allows us to transform process _raw_ data in our Data Warehouse to _transformed_ data which can be later used by Business Intelligence tools and any other data consumers.
@@ -173,7 +175,7 @@ dbt has 2 main components: _dbt Core_ and _dbt Cloud_:
     * Free for individuals (one developer seat).
 
     -- It is the managed, web-based version of dbt. It provides built-in job scheduling, version control (Git integration), and team collaboration tools.
-    
+
 For integration with BigQuery we will use the dbt Cloud IDE, so a local installation of dbt core isn't required. For developing locally rather than using the Cloud IDE, dbt Core is required. Using dbt with a local Postgres database can be done with dbt Core, which can be installed locally and connected to Postgres and run models through the CLI.
 
 ![dbt](images/04_02.png)
@@ -227,10 +229,10 @@ WHERE record_state = 'ACTIVE'
 * In the Jinja statement defined within the `{{ }}` block we call the [`config()` function](https://docs.getdbt.com/reference/dbt-jinja-functions/config).
     * More info about Jinja macros for dbt [in this link](https://docs.getdbt.com/docs/building-a-dbt-project/jinja-macros).
 * We commonly use the `config()` function at the beginning of a model to define a ***materialization strategy***: a strategy for persisting dbt models in a warehouse.
-    * The `table` strategy means that the model will be rebuilt as a table on each run.
-    * We could use a `view` strategy instead, which would rebuild the model on each run as a SQL view.
-    * The `incremental` strategy is essentially a `table` strategy but it allows us to add or update records incrementally rather than rebuilding the complete table on each run.
-    * The `ephemeral` strategy creates a _[Common Table Expression](https://www.essentialsql.com/introduction-common-table-expressions-ctes/)_ (CTE).
+    * The `table` strategy means that the model will be rebuilt as a table on each run. Tables are physical representations of data that are created and stored in the database.
+    * We could use a `view` strategy instead, which would rebuild the model on each run as a SQL view. Views are virtual tables created by dbt that can be queried like regular tables.
+    * The `incremental` strategy is essentially a `table` strategy but it allows us to add or update records incrementally rather than rebuilding the complete table on each run, reducing the need for full data refreshes.
+    * The `ephemeral` strategy creates a _[Common Table Expression](https://www.essentialsql.com/introduction-common-table-expressions-ctes/)_ (CTE). Ephemeral materializations are temporary and exist only for the duration of a single dbt run.
     * You can learn more about materialization strategies with dbt [in this link](https://docs.getdbt.com/docs/building-a-dbt-project/building-models/materializations). Besides the 4 common `table`, `view`, `incremental` and `ephemeral` strategies, custom strategies can be defined for advanced cases.
 
 dbt will compile this code into the following SQL query:
@@ -244,6 +246,8 @@ CREATE TABLE my_schema.my_model AS (
 ```
 
 After the code is compiled, dbt will run the compiled code in the Data Warehouse.
+
+![sql](images/04_13.png)
 
 Additional model properties are stored in YAML files. Traditionally, these files were named `schema.yml` but later versions of dbt do not enforce this as it could lead to confusion.
 
@@ -284,12 +288,27 @@ sources:
             error_after: {count: 6, period: hour}
 ```
 
+- "staging" is not a BigQuery object name. Instead, it is a logical alias used within dbt.
+- "production" → BigQuery Project (database)
+- "trips_data_all" → BigQuery Dataset (schema)
+- "yellow_tripdata" → BigQuery Table inside this dataset
+- dbt checks the `loaded_at_field` column to see the most recent timestamp in yellow_tripdata. If the latest record is older than 6 hours, dbt throws an error when you run `dbt source freshness`. This ensures that your source data is updated frequently.
+    * `error_after`: Defines the maximum acceptable data staleness.
+    * `count`: 6 → Data should be no older than 6 units.
+    * `period`: hour → The unit of measurement is hours.
+
 And here's how you would reference a source in a `FROM` clause:
 
 ```sql
 FROM {{ source('staging','yellow_tripdata') }}
 ```
 * The first argument of the `source()` function is the source name, and the second is the table name.
+-- so in this way, you only need to define `source` once and refer to different tables within that source
+
+-> dbt will resolve it to:
+```sql
+SELECT * FROM `production.trips_data_all.yellow_tripdata`
+```
 
 In the case of seeds, assuming you've got a `taxi_zone_lookup.csv` file in your `seeds` folder which contains `locationid`, `borough`, `zone` and `service_zone`:
 
@@ -322,7 +341,7 @@ WITH green_data AS (
 ),
 ```
 * The `ref()` function translates our references table into the full reference, using the `database.schema.table` structure.
-* If we were to run this code in our production environment, dbt would automatically resolve the reference to make ir point to our production schema.
+* Run the same code in any environment, it will resolve the correct schema for you: If we were to run this code in our production environment, dbt would automatically resolve the reference to make it point to our production schema.
 
 ## Defining a source and creating a model
 
@@ -374,7 +393,7 @@ Macros allow us to add features to SQL that aren't otherwise available, such as:
 * Use control structures such as `if` statements or `for` loops.
 * Use environment variables in our dbt project for production.
 * Operate on the results of one query to generate another query.
-* Abstract snippets of SQL into reusable macros.
+* Abstract snippets of SQL into reusable macros (like functions in most programming languages)
 
 Macros are defined in separate `.sql` files which are typically stored in a `macros` directory.
 
@@ -414,7 +433,7 @@ select
 from {{ source('staging','green_tripdata') }}
 where vendorid is not null
 ```
-* We pass a `payment-type` variable which may be an integer from 1 to 6.
+* We pass a `payment-type` variable which may be an integer from 1 to 6. (Note: need to add single quotes for 'payment-type')
 
 And this is what it would compile to:
 ```sql
@@ -427,9 +446,11 @@ select
         when 5 then 'Unknown'
         when 6 then 'Voided trip'
     end as payment_type_description,
-    congestion_surcharge::double precision
+    congestion_surcharge::double precision 
 from {{ source('staging','green_tripdata') }}
 where vendorid is not null
+
+# congestion_surcharge::double precision - converts the congestion_surcharge column into a double precision (floating-point number)
 ```
 * The macro is replaced by the code contained within the macro definition as well as any variables that we may have passed to the macro parameters.
 
@@ -451,11 +472,13 @@ After declaring your packages, you need to install them by running the `dbt deps
 You may access macros inside a package in a similar way to how Python access class methods:
 ```sql
 select
-    {{ dbt_utils.surrogate_key(['vendorid', 'lpep_pickup_datetime']) }} as tripid,
+    {{ dbt_utils.surrogate_key(['vendorid', 'lpep_pickup_datetime']) }} as trip_id,
     cast(vendorid as integer) as vendorid,
     -- ...
 ```
 * The `surrogate_key()` macro generates a hashed [surrogate key](https://www.geeksforgeeks.org/surrogate-key-in-dbms/) with the specified fields in the arguments.
+* Since vendorid and lpep_pickup_datetime uniquely identify a trip, the surrogate key (tripid) is a consistent, unique hash for each row.
+
 
 ## Variables
 
@@ -472,7 +495,7 @@ Variables can be defined in 2 different ways:
     dbt build --m <your-model.sql> --var 'is_test_run: false'
     ```
 
-Variables can be used with the `var()` macro. For example:
+Variables can be used with the `{{ var('...') }}` macro. For example:
 ```sql
 {% if var('is_test_run', default=true) %}
 
@@ -480,12 +503,14 @@ Variables can be used with the `var()` macro. For example:
 
 {% endif %}
 ```
+-- `Dev limit`: by default we'll have cheaper, faster queries because they'll be limited to 100. When we actually want to use all of the production data, most likely in likely in deployment, we can set is_test_run to false
+
 * In this example, the default value for `is_test_run` is `true`; in the absence of a variable definition either on the `dbt_project.yml` file or when running the project, then `is_test_run` would be `true`.
 * Since we passed the value `false` when runnning `dbt build`, then the `if` statement would evaluate to `false` and the code within would not run.
 
 ## Referencing older models in new models
 
->Note: you will need the [Taxi Zone Lookup Table seed](https://s3.amazonaws.com/nyc-tlc/misc/taxi+_zone_lookup.csv), the [staging models and schema](https://github.com/DataTalksClub/data-engineering-zoomcamp/tree/main/week_4_analytics_engineering/taxi_rides_ny/models/staging) and the [macro files](https://github.com/DataTalksClub/data-engineering-zoomcamp/tree/main/week_4_analytics_engineering/taxi_rides_ny/macros) for this section.
+>Note: you will need the [Taxi Zone Lookup Table seed](https://s3.amazonaws.com/nyc-tlc/misc/taxi+_zone_lookup.csv), the [staging models and schema](https://github.com/DataTalksClub/data-engineering-zoomcamp/tree/main/04-analytics-engineering/taxi_rides_ny/models/staging) and the [macro files](https://github.com/DataTalksClub/data-engineering-zoomcamp/tree/main/04-analytics-engineering/taxi_rides_ny/macros) for this section.
 
 The models we've created in the _staging area_ are for normalizing the fields of both green and yellow taxis. With normalized field names we can now join the 2 together in more complex ways.
 
@@ -512,9 +537,12 @@ with green_data as (
 ```
 * This snippet references the `sgt_green_tripdata` model that we've created before. Since a model outputs a table/view, we can use it in the `FROM` clause of any query.
 
-You may check out these more complex "core" models [in this link](https://github.com/DataTalksClub/data-engineering-zoomcamp/tree/main/week_4_analytics_engineering/taxi_rides_ny/models/core).
+You may check out these more complex "core" models [in this link](https://github.com/DataTalksClub/data-engineering-zoomcamp/tree/main/04-analytics-engineering/taxi_rides_ny/models/core).
 
 >Note: running `dbt run` will run all models but NOT the seeds. The `dbt build` can be used instead to run all seeds and models as well as tests, which we will cover later. Additionally, running `dbt run --select my_model` will only run the model itself, but running `dbt run --select +my_model` will run the model as well as all of its dependencies.
+![build](images/04_14.png)
+
+![build](images/04_15.png)
 
 _[Back to the top](#)_
 
@@ -528,7 +556,13 @@ Tests in dbt are ***assumptions*** that we make about our data.
 
 In dbt, tests are essentially a `SELECT` query that will return the amount of records that fail because they do not follow the assumption defined by the test.
 
-Tests are defined on a column in the model YAML files (like the `schema.yml` file we defined before). dbt provides a few predefined tests to check column values but custom tests can also be created as queries. Here's an example test:
+Tests are defined on a column in the model YAML files (like the `schema.yml` file we defined before). dbt provides a few predefined tests to check if the column values are:
+- unique
+- not null
+- accepted values
+- a foreign key to another table 
+
+Custom tests can also be created as queries. Here's an example test:
 
 ```yaml
 models:
@@ -550,14 +584,37 @@ models:
 * `not_null` checks whether all the values in the `tripid` column are not null.
 * Both tests will return a warning in the command line interface if they detect an error.
 
-Here's wwhat the `not_null` will compile to in SQL query form:
+Here's what the `not_null` will compile to in SQL query form:
 
 ```sql
 select *
 from "my_project"."dbt_dev"."stg_yellow_tripdata"
+where tripid is not null
+```
+
+other tests:
+```sql
+- name: Pickup_locationid
+            description: locationid where the meter was engaged.
+            tests:
+              - relationships:
+                  to: ref('taxi_zone_lookup')
+                  field: locationid
+                  severity: warn
+
+- name: Payment_type 
+            description: >
+              A numeric code signifying how the passenger paid for the trip.
+            tests: 
+              - accepted_values:
+                  values: "{{ var('payment_type_values') }}"
+                  severity: warn
+                  quote: false -- for bigquery, otherwise it will fail
 ```
 
 You may run tests with the `dbt test` command.
+![test](images/04_16.png)
+![test](images/04_17.png)
 
 ## Documentation
 
@@ -576,8 +633,18 @@ The dbt generated docs will include the following:
     * Column names and data types
     * Table stats like size and rows
 
-dbt docs can be generated on the cloud or locally with `dbt docs generate`, and can be hosted in dbt Cloud as well or on any other webserver with `dbt docs serve`.
+![docs](images/04_19.png)
 
+dbt docs can be generated on the cloud or locally with `dbt docs generate`, and can be hosted in dbt Cloud as well or on any other webserver with `dbt docs serve`.
+![docs](images/04_18.png)
+
+p.s. You can use the helper function [codegen.get_models](https://github.com/dbt-labs/dbt-codegen?tab=readme-ov-file#generate_model_yaml-source) and specify a directory and/or prefix to get a list of all matching models, to be passed into model_names list.
+```sql
+{% set models_to_generate = codegen.get_models(directory='marts', prefix='fct_') %}
+{{ codegen.generate_model_yaml(
+    model_names = models_to_generate
+) }}
+```
 _[Back to the top](#)_
 
 # Deployment of a dbt project
