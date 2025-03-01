@@ -754,7 +754,7 @@ You can access the run and check the current state of it as well as the logs. Af
 
 Under _Account settings_ > _Projects_, you may edit the project in order to modify the _Documentation_ field under _Artifacts_; you should see a drop down menu which should contain the job we created which generates the docs. After saving the changes and reloading the dbt Cloud website, you should now have a _Documentation_ section in the sidebar.
 
-p.s. You can also use API to trigger dbt run
+p.s. You can also use API to trigger dbt to run a job
 ![dbt](images/04_23.png)
 
 ## Deployment using dbt Core (local)
