@@ -716,11 +716,21 @@ dbt projects are usually deployed in the form of ***jobs***:
 
 ## Continuous Integration
 
+[video clip starting from 11:00](https://www.youtube.com/watch?v=V2m5C0n8Gro&list=PLaNLNpjZpzwgneiI-Gl8df8GCsPYp_6Bs&index=8)
+
 Another good software engineering practice that dbt enables is ***Continuous Integration*** (CI): the practice of regularly merging development branches into a central repository, after which automated builds and tests are run. The goal of CI is to reduce adding bugs to the production code and maintain a more stable project.
+![CI](images/04_29.png)
+![CI](images/04_30.png)
 
 CI is built on jobs: a CI job will do things such as build, test, etc. We can define CI jobs which can then be triggered under certain circunstances to enable CI.
 
 dbt makes use of GitHub/GitLab's Pull Requests to enable CI via [webhooks](https://www.wikiwand.com/en/Webhook). When a PR is ready to be merged, a webhook is received in dbt Cloud that will enqueue a new run of a CI job. This run will usually be against a temporary schema that has been created explicitly for the PR. If the job finishes successfully, the PR can be merged into the main branch, but if it fails the merge will not happen.
+
+![CI](images/04_31.png)
+![CI](images/04_32.png)
+-> failed
+![CI](images/04_33.png)
+-> so this PR will not be merged into the main branch
 
 p.s. "temporary schema": a separate schema that dbt Cloud creates dynamically for each PR
 ![temporary schema](images/04_21.png)
@@ -751,8 +761,9 @@ In the _Schedule_ tab at the bottom we will check the _Run on schedule?_ checkbo
 You can access the run and check the current state of it as well as the logs. After the run is finished, you will see a _View Documentation_ button at the top; clicking on it will open a new browser window/tab with the generated docs.
 
 ![dbt](images/04_27.png)
+![dbt](images/04_28.png)
 
-Under _Account settings_ > _Projects_, you may edit the project in order to modify the _Documentation_ field under _Artifacts_; you should see a drop down menu which should contain the job we created which generates the docs. After saving the changes and reloading the dbt Cloud website, you should now have a _Documentation_ section in the sidebar.
+Under _Dashboard_ > _Projects_, you may edit the project in order to modify the _Documentation_ field under _Artifacts_; you should see a drop down menu which should contain the job we created which generates the docs. After saving the changes and reloading the dbt Cloud website, you should now have a _Documentation_ section in the sidebar.
 
 p.s. You can also use API to trigger dbt to run a job
 ![dbt](images/04_23.png)
@@ -771,9 +782,9 @@ _Video sources: [1](https://www.youtube.com/watch?v=39nLTs74A3E&list=PL3MmuxUbc_
 
 After creating our models, transforming the data and deploying the models, we will now ***visualize*** the data.
 
-## Google Data Studio
+## Google Looker Studio
 
-[Google Data Studio](https://datastudio.google.com/) (GDS) is an online tool for converting data into ***reports*** and ***dashboards***.
+Google [Looker Studio](https://lookerstudio.google.com/) is an online tool for converting data into ***reports*** and ***dashboards***.
 
 In first place we will create a ***Data Source***. GDS supports multiple sources including BigQuery. After authorizing GDS to access BigQuery, we will be able to select our project and datasets. We will connect to our `production.fact_trips` schema.
 

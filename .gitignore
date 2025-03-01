@@ -3,6 +3,8 @@
 *.parquet
 *.csv
 
+*.pdf
+
 !seeds/taxi_zone_lookup.csv
 
 01-docker-terraform/1_docker_sql/ny_taxi_postgres_data/*
