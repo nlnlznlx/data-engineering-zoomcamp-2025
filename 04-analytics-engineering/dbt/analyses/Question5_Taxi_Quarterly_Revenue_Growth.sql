@@ -1,0 +1,1 @@
+select * from {{ ref('fact_taxi_trips_quarterly_revenue')}}
