@@ -5,9 +5,9 @@ with trips_data as (
     from {{ ref('fact_trips') }}
 )
 select service_type,
-    year,
+    /*year,
     quarter,
-    month,
+    month, -- any column in SELECT that isn’t wrapped in an aggregate function (SUM, AVG, etc.) must appear in the GROUP BY clause */
     year_quarter,
     sum(total_amount)
 from trips_data
