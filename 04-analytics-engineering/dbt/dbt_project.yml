@@ -47,7 +47,7 @@ models:
 
 vars:
   payment_type_values: [1, 2, 3, 4, 5, 6]
-  is_test_run: "{{ env_var('DBT_IS_TEST_RUN', 'true') }}"
+  #is_test_run: "{{ env_var('DBT_IS_TEST_RUN', 'true') }}"
 
 seeds:
   taxi_rides_ny_bq:
