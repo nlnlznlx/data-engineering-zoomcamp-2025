@@ -22,6 +22,12 @@ private/*
 03-data-warehouse/airflow/logs/*
 03-data-warehouse/airflow/plugins/*
 
+05-batch-processing/data/*
+05-batch-processing/lib/*
+05-batch-processing/tmp/*
+05-batch-processing/zones/*
+05-batch-processing/fhvhv/*
+
 7_project/airflow/dags/*
 7_project/airflow/logs/*
 7_project/airflow/plugins/*
