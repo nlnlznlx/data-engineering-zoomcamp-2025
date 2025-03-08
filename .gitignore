@@ -27,6 +27,7 @@ private/*
 05-batch-processing/tmp/*
 05-batch-processing/zones/*
 05-batch-processing/fhvhv/*
+05-batch-processing/hw/pq/*
 
 7_project/airflow/dags/*
 7_project/airflow/logs/*
