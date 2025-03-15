@@ -59,11 +59,15 @@
 
 # Introduction to Streaming
 
+_[Video source](https://www.youtube.com/watch?v=WxTxKGcfA-k&list=PL3MmuxUbc_hJed7dXYoJw8DoCuVHhGEQb&index=62)_
+
+Sream processing: data is getting exchanged in real time
+
 # Introduction to Apache Kafka
 
 ## What is Kafka?
 
-_[Video source](https://www.youtube.com/watch?v=P1u8x3ycqvg&list=PL3MmuxUbc_hJed7dXYoJw8DoCuVHhGEQb&index=57)_
+_[Video source](https://www.youtube.com/watch?v=zPLZUDPi4AY&list=PL3MmuxUbc_hJed7dXYoJw8DoCuVHhGEQb&index=63)_
 
 [Apache Kafka](https://kafka.apache.org/) is a ***message broker*** and ***stream processor***. Kafka is used to handle ***real-time data feeds***.
 
@@ -85,13 +89,20 @@ Kafka works by allowing producers to send ***messages*** which are then pushed i
 
 Kafka is hugely popular and most technology-related companies use it.
 
+![kafka](images/06_11.png)
+
+![uber_example1](images/06_12.png)
+![uber_example2](images/06_14.png)
+
 _You can also check out [this animated comic](https://www.gentlydownthe.stream/) to learn more about Kafka._
 
 _[Back to the top](#)_
 
 ## Basic Kafka components
 
-_[Video source](https://www.youtube.com/watch?v=P1u8x3ycqvg&list=PL3MmuxUbc_hJed7dXYoJw8DoCuVHhGEQb&index=57)_
+_[Video source](https://www.youtube.com/watch?v=zPLZUDPi4AY&list=PL3MmuxUbc_hJed7dXYoJw8DoCuVHhGEQb&index=63)_
+
+![kafka](images/06_10.png)
 
 ### Message
 
@@ -139,6 +150,7 @@ Here's how a producer and a consumer would talk to the same Kafka broker to send
         k -->|3. Write messages 1,2,3|logs
         k-.->|4. ack|p
     ```
+    ![chart](images/06_13.png)
     1. The producer first declares the topic it wants to "talk about" to Kafka. In this example, the topic will be `abc`. Kafka will then assign a _physical location_ on the hard drive for that specific topic (the topic logs).
     1. The producer then sends messages to Kafka (in our example, messages 1, 2 and 3).
     1. Kafka assigns an ID to the messages and writes them to the logs.
@@ -160,6 +172,7 @@ Here's how a producer and a consumer would talk to the same Kafka broker to send
         k-->|3. Send unread messages|c
         c-.->|4. ack|k
     ```
+    ![chart](images/06_15.png)
     1. The consumer declares to Kafka that it wants to read from a particular topic. In our example, the topic is `abc`.
     1. Kafka checks the logs and figures out which messages for that topic have been read and which ones are unread.
     1. Kafka sends the unread messages to the consumer.
@@ -185,11 +198,17 @@ Consumer groups have IDs and all consumers within a group have IDs as well.
 
 The default value for consumer groups is 1. All consumers belong to a consumer group.
 
+Example:
+![example1](images/06_16.png)
+![example2](images/06_17.png)
+
 ### Partitions
 
 >Note: do not confuse BigQuery or Spark partitions with Kafka partitions; they are different concepts.
 
 Topic logs in Kafka can be ***partitioned***. A topic is essentially a _wrapper_ around at least 1 partition.
+
+![partition](images/06_19.png)
 
 Partitions are assigned to consumers inside consumer groups:
 * ***A partition*** is assigned to ***one consumer only***.
@@ -202,8 +221,12 @@ Partitions are assigned to consumers inside consumer groups:
 Partitions in Kafka, along with consumer groups, are a scalability feature. Increasing the amount of partitions allows the consumer group to increase the amount of consumers in order to read messages at a faster rate. Partitions for one topic may be stored in separate Kafka brokers in our cluster as well.
 
 Messages are assigned to partitions inside a topic by means of their ***key***: message keys are hashed and the hashes are then divided by the amount of partitions for that topic; the remainder of the division is determined to assign it to its partition. In other words: _hash modulo partition amount_.
+
+![partition](images/06_20.png)
+
 * While it would be possible to store messages in different partitions in a round-robin way, this method would not keep track of the _message order_.
 * Using keys for assigning messages to partitions has the risk of making some partitions bigger than others. For example, if the topic `client` makes use of client IDs as message keys and one client is much more active than the others, then the partition assigned to that client will grow more than the others. In practice however this is not an issue and the advantages outweight the cons.
+![partition](images/06_18.png)
 
 ```mermaid
 flowchart LR
@@ -239,6 +262,8 @@ Partitions are ***replicated*** accross multiple brokers in the Kafka cluster as
 
 When a partition is replicated accross multiple brokers, one of the brokers becomes the ***leader*** for that specific partition. The leader handles the message and writes it to its partition log. The partition log is then replicated to other brokers, which contain ***replicas*** for that partition. Replica partitions should contain the same messages as leader partitions.
 
+![replica](images/06_21.png)
+
 If a broker which contains a leader partition dies, another broker becomes the leader and picks up where the dead broker left off, thus guaranteeing that both producers and consumers can keep posting and reading messages.
 
 We can define the _replication factor_ of partitions at topic level. A replication factor of 1 (no replicas) is undesirable, because if the leader broker dies, then the partition becomes unavailable to the whole system, which could be catastrophic in certain applications.
@@ -247,13 +272,13 @@ _[Back to the top](#)_
 
 ## Kafka configurations
 
-_[Video source](https://www.youtube.com/watch?v=Erf1-d1nyMY&list=PL3MmuxUbc_hJed7dXYoJw8DoCuVHhGEQb&index=58)_
+_[Video source](https://www.youtube.com/watch?v=SXQtWyRpMKs&list=PL3MmuxUbc_hJed7dXYoJw8DoCuVHhGEQb&index=67)_
 
 This section will cover different settings and properties accross Kafka actors.
 ### Topic configurations
 
 * `retention.ms`: due to storage space limitations, messages can't be kept indefinitely. This setting specifies the amount of time (in milliseconds) that a specific topic log will be available before being deleted.
-* `cleanup.policy`: when the `retention.ms` time is up, we may choose to `delete` or `compact` a topic log.
+* `cleanup.policy=[delete|compact]`: when the `retention.ms` time is up, we may choose to `delete` or `compact` a topic log.
     * Compaction does not happen instantly; it's a batch job that takes time.
 * `partition`: number of partitions.
     * The higher the amount, the more resources Kafka requires to handle them. Remember that partitions will be replicated across brokers; if a broker dies we could easily overload the cluster.
@@ -262,8 +287,10 @@ This section will cover different settings and properties accross Kafka actors.
 ### Consumer configurations
 
 * `offset`: sequence of message IDs which have been read by the consumer.
+![offset](images/06_22.png)
+
 * `consumer.group.id`: ID for the consumer group. All consumers belonging to the same group contain the same `consumer.group.id`.
-* `auto_offset_reset`: when a consumer subscribes to a pre-existing topic for the first time, Kafka needs to figure out which messages to send to the consumer.
+* `auto_offset_reset=[earliest|latest]`: when a consumer subscribes to a pre-existing topic for the first time, Kafka needs to figure out which messages to send to the consumer.
     * If `auto_offset_reset` is set to `earliest`, all of the existing messages in the topic log will be sent to the consumer.
     * If `auto_offset_reset` is set to `latest`, existing old messages will be ignored and only new messages will be sent to the consumer.
 
@@ -308,6 +335,19 @@ We will now create a demo of a Kafka system with a producer and a consumer and s
 
 1. In the Control Center GUI, select the `Cluster 1` cluster and in the topic section, create a new `demo_1` topic with 2 partitions and default settings.
 1. Copy the [`requirements.txt`](../6_streaming/requirements.txt) to your work folder and [create a Python virtual environment](https://gist.github.com/ziritrion/8024025672ea92b8bdeb320d6015aa0d). You will need to run all the following scripts in this environment.
+    1. Create the Virtual Environment
+        ```sh
+        python -m venv kafka-env
+        ```
+    2. Activate the Virtual Environment
+        ```sh
+        source kafka-env/bin/activate
+        ```
+    3. Install Dependencies from requirements.txt
+        ```sh
+        pip install -r requirements.txt
+        ```
+
 1. Copy the [`producer.py`](../6_streaming/producer.py) script to your work folder. Edit it and make sure that the line `producer.send('demo_1', value=data)` (it should be line 12 on an unmodified file) is set to `demo_1`. Run the script and leave it running in a terminal.
     * This script registers to Kafka as a producer and sends a message each second until it sends 1000 messages.
     * With the script running, you should be able to see the messages in the Messages tab of the `demo_1` topic window in Control Center.
@@ -327,6 +367,8 @@ _[Video source](https://www.youtube.com/watch?v=bzAsVNE5vOo&list=PL3MmuxUbc_hJed
 ## Why are schemas needed?
 
 Kafka messages can be anything, from plain text to binary objects. This makes Kafka very flexible but it can lead to situations where consumers can't understand messages from certain producers because of incompatibility (like a producer sending a PHP object to a Python consumer).
+
+![schema](images/06_23.png)
 
 ```mermaid
 flowchart LR
@@ -363,6 +405,8 @@ _[Back to the top](#)_
 
 Let's supose that we use JSON instead of Avro for serializing data and sending messages.
 
+![schema](images/06_24.png)
+
 ```mermaid
 flowchart LR
     p{{producer}}
@@ -372,6 +416,8 @@ flowchart LR
 ```
 
 Because the schema is implicit in JSON, the consumer has to assume that `id` and `name` will be strings and `age` is an integer. Let's say that for whatever reason we need to update the schema and change `age` to a String as well:
+
+![schema](images/06_25.png)
 
 ```mermaid
 flowchart LR
@@ -408,6 +454,8 @@ The ***schema registry*** is a component that stores schemas and can be accessed
 
 This is the usual workflow of a working schema registry with Kafka:
 
+![schema](images/06_26.png)
+
 ```mermaid
 flowchart LR
     p(producer)
@@ -435,6 +483,8 @@ There are instances in which schemas must be updated in ways that break compatib
 
 In those cases, the best way to proceed is to create a new topic for the new schema and add a downstream service that converts messages from the new schema to the old one and publishes the converted messages to the original topic. This will create a window in which services can be migrated to use the new topic progressively.
 
+![schema](images/06_27.png)
+
 ```mermaid
 flowchart LR
     p{{producer}}
@@ -457,6 +507,9 @@ flowchart LR
     t1 --> s3 & s4
     t2 --> s1 & s2
 ```
+
+![migration1](images/06_28.png)
+![migration2](images/06_29.png)
 
 _[Back to the top](#)_
 
@@ -523,7 +576,7 @@ _[Back to the top](#)_
 
 # Kafka Streams
 
-_Video sources: [1](https://www.youtube.com/watch?v=uuASDjCtv58&list=PL3MmuxUbc_hJed7dXYoJw8DoCuVHhGEQb&index=60), [2](https://www.youtube.com/watch?v=dTzsDM9myr8&list=PL3MmuxUbc_hJed7dXYoJw8DoCuVHhGEQb&index=63), [3](https://www.youtube.com/watch?v=d8M_-ZbhZls&list=PL3MmuxUbc_hJed7dXYoJw8DoCuVHhGEQb&index=65)_
+_Video sources: [1](https://www.youtube.com/watch?v=dUyA_63eRb0&list=PL3MmuxUbc_hJed7dXYoJw8DoCuVHhGEQb&index=74), [2](https://www.youtube.com/watch?v=NcpKlujh34Y&list=PL3MmuxUbc_hJed7dXYoJw8DoCuVHhGEQb&index=75), [3](https://www.youtube.com/watch?v=TNx5rmLY8Pk&list=PL3MmuxUbc_hJed7dXYoJw8DoCuVHhGEQb&index=76), [4](https://www.youtube.com/watch?v=r1OuLdwxbRc&list=PL3MmuxUbc_hJed7dXYoJw8DoCuVHhGEQb&index=77)_
 
 ## What is Kafka Streams?
 

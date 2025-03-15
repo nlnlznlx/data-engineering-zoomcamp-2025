@@ -29,10 +29,12 @@ private/*
 05-batch-processing/fhvhv/*
 05-batch-processing/hw/pq/*
 
-7_project/airflow/dags/*
-7_project/airflow/logs/*
-7_project/airflow/plugins/*
-7_project/terraform/
+06-streaming/kafka-java/kafka-env
+
+project/airflow/dags/*
+project/airflow/logs/*
+project/airflow/plugins/*
+project/terraform/
 
 *.json
 *.json.gz
